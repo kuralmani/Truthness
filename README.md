@@ -2,16 +2,57 @@
 
 Fact-check a video or a web page before you believe it.
 
-A lot of online content is made to get attention and sell something, and it mixes real facts with false impressions. Truthness reads a YouTube video (via its captions) or a web page, pulls out the factual claims, checks them against published sources with the AI model **you** choose, and gives you:
-
-- an overall verdict (True · Mostly true · Mixed · Misleading · Mostly false · False · Can't verify) and a 0–100 score,
-- a claim-by-claim breakdown with links to the sources used,
-- what the content is selling and which persuasion tricks it uses,
-- the context it leaves out.
-
-It runs on your own machine. There is no account and no hosted service: your model, your keys, your data.
+Truthness reads a YouTube video or a web page, pulls out the factual claims, checks each one against published sources with the AI model **you** choose, and tells you what holds up, what doesn't, and what is being sold. It runs on your own machine: no account, no hosted service.
 
 ![A Truthness verdict: overall rating, score, summary and the claims that were checked](docs/screenshot.png)
+
+**[Quick start](#quick-start)** · [Why this exists](#why-this-exists) · [Choosing models](#choosing-models) · [How to read a verdict](#how-to-read-a-verdict)
+
+## Why this exists
+
+### It started with a 60-second video
+
+A short video opens with a man in his bathroom telling you that your shower water is toxic. You are, he says, bathing in more chlorine than a public swimming pool. The chlorine reacts into chemicals that enter your blood, damage your liver and kidneys, and probably cause cancer, and your city isn't telling you. Then, in the last ten seconds, the solution appears: a shower filter, "number one rated", link below.
+
+It is convincing. He is calm, he cites real chemical names, and some of what he says is true: chlorinated water does contain those byproducts, and a shower does raise their level in your blood. But checked against the sources, the picture falls apart. Tap water is usually *less* chlorinated than a pool. The harms come from studies at doses far above what regulated tap water delivers. The "hidden" chemicals have been regulated and publicly reported for decades. And an independent test found the filter barely removes the very chemicals the video frightens you about. The video is a paid advertisement.
+
+Working that out by hand means an hour of searching and reading. The video takes one minute to watch, and the next one starts automatically.
+
+### This is how most misinformation works now
+
+Outright lies are easy to dismiss. What works is the half-truth: real facts, arranged to leave a false impression. A real study, quoted without the dose. A real risk, without how small it is. A real number, without what it is compared to. Each sentence survives a fact-check on its own; the conclusion you are led to does not.
+
+This is not an accident, it is a business model:
+
+- **Attention is the product.** Platforms pay for and promote whatever keeps people watching, and fear, outrage and surprise keep people watching. A study of about 126,000 news stories on Twitter found that false stories reached people faster and spread further than true ones, and that people, not bots, were doing the sharing ([Vosoughi, Roy & Aral, *Science*, 2018](https://www.science.org/doi/10.1126/science.aap9559)).
+- **Fear sells.** Much of the most alarming content about health, money and parenting ends with something to buy: a supplement, a filter, a course, a coin. The alarm is the sales pitch.
+- **Making a claim is cheap; checking it is not.** Anyone can film a confident claim in a minute. Checking it means finding the primary source, reading it, and understanding what it does and does not say. Almost nobody has the time, so almost nobody does it.
+- **It looks like expertise.** A steady voice, a lab coat, a chart and the phrase "studies show" are enough. On a phone, at speed, a careful scientist and a salesperson are hard to tell apart.
+
+The cost is real. People spend money on things that do nothing, skip treatments that work, and worry about the wrong risks. They also forward it to family, in good faith, because it sounded true.
+
+### What Truthness does about it
+
+Truthness does the hour of checking for you, at the moment you are watching.
+
+1. **It reads what was actually said.** The captions of a video or the text of a page, with timestamps.
+2. **It separates the claims.** Each checkable statement is pulled out on its own, so one true fact cannot carry three false ones.
+3. **It looks for evidence.** The model searches the web and links the sources it used, so you can open them yourself.
+4. **It judges the impression as well as the sentences.** "Misleading" is a verdict of its own: the facts are largely real, the conclusion is not.
+5. **It follows the money.** It tells you what is being sold, whether the content is sponsored, and which persuasion techniques are in use: fear, false urgency, borrowed authority, cherry-picked numbers.
+6. **It says what was left out.** The dose, the comparison, the regulation that already exists.
+
+For the shower video, that is a verdict of **Misleading, 42 out of 100**, with nine claims checked and the sources for each.
+
+### Why it is open and runs on your machine
+
+A fact-checker that asks for blind trust would be the same problem again. So:
+
+- **You choose the model.** Claude, Gemini, a local model, or anything else; you can run the same content through two of them and compare.
+- **Everything is inspectable.** The prompt, the code and the sources behind every verdict are open. If a verdict is wrong, you can see why.
+- **Nobody is in the middle.** There is no company server deciding what is true, collecting what you check, or able to be pressured into changing an answer.
+
+Truthness is not an oracle. AI models make mistakes, and a verdict is a starting point for your own judgment, not a ruling. The aim is modest: make checking as cheap as claiming, so that the next time something sounds alarming you can find out in a minute whether it is true, before you believe it, buy it or share it.
 
 ## Quick start
 
