@@ -51,3 +51,17 @@ type = "claude-cli"
 # command = "gemini"
 # args = ["-p", "Follow the instructions given on stdin."]
 # grounded = true              # set true only if the tool searches the web itself
+
+# --- OpenAI Codex CLI ("-" reads the prompt from stdin). Untested: check `codex exec --help`.
+# [providers.codex]
+# type = "command"
+# label = "Codex CLI"
+# command = "codex"
+# args = ["exec", "--sandbox", "read-only", "--skip-git-repo-check", "-"]
+
+# --- Cursor CLI (prompt passed as an argument via a shell wrapper). Untested: check `agent --help`.
+# [providers.cursor]
+# type = "command"
+# label = "Cursor CLI"
+# command = "sh"
+# args = ["-c", 'agent -p --output-format text "$(cat)"']

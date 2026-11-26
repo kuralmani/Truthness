@@ -116,7 +116,7 @@ The extension talks to `http://localhost:8787` by default. Change the server and
 | An Anthropic API key | `ANTHROPIC_API_KEY=… truthness` |
 | A Gemini API key | `GEMINI_API_KEY=… truthness` |
 | Ollama or another local model | Copy `truthness.example.toml` to `truthness.toml`, uncomment the `[providers.ollama]` block, run `truthness` |
-| Another CLI (Gemini CLI, …) | Same file, the `type = "command"` block |
+| Codex, Cursor, Gemini CLI or another CLI | Same file, a `type = "command"` block: see [Other CLIs](#other-clis-codex-cursor-) |
 
 `truthness.toml` is read from the folder you start the server in; pass another path as the first argument (`truthness /path/to/truthness.toml`) or set `TRUTHNESS_CONFIG`.
 
@@ -151,6 +151,36 @@ Copy `truthness.example.toml` to `truthness.toml`. Each `[providers.<name>]` blo
 Models without web search can only answer from memory. Truthness tells them so, and labels their verdicts accordingly in the UI. Prefer a model that can search.
 
 API keys are read from environment variables, never from the config file.
+
+### Other CLIs (Codex, Cursor, …)
+
+A `command` provider runs any program, writes the prompt to its standard input and reads the answer from its standard output. That covers most AI command-line tools. Add a block to `truthness.toml`:
+
+```toml
+# OpenAI Codex CLI. "-" makes it read the prompt from stdin.
+[providers.codex]
+type = "command"
+label = "Codex CLI"
+command = "codex"
+args = ["exec", "--sandbox", "read-only", "--skip-git-repo-check", "-"]
+grounded = false   # set true only if you have enabled web search in Codex
+
+# Cursor CLI. It takes the prompt as an argument, so a one-line shell
+# wrapper passes stdin along. On older installs the binary is `cursor-agent`.
+[providers.cursor]
+type = "command"
+label = "Cursor CLI"
+command = "sh"
+args = ["-c", 'agent -p --output-format text "$(cat)"']
+grounded = false
+```
+
+Restart the server and the new entries appear in the model picker.
+
+- **These two examples are untested.** They follow each tool's documentation at the time of writing; both CLIs change often, so check `codex exec --help` and `agent --help` if a check fails. The error shown in Truthness includes the tool's own message. A pull request with a verified setup is welcome.
+- **Keep the tool read-only.** The content being checked is untrusted, and coding agents can normally edit files and run commands. Use the tool's read-only or sandbox mode, as above, and do not add flags that auto-approve actions. Commands run in an empty temporary folder, not in your project.
+- **`grounded`** tells Truthness whether the tool searches the web. Leave it `false` unless it does; verdicts are then labelled "from memory only".
+- The `sh -c '… "$(cat)"'` pattern works for any CLI that only accepts the prompt as an argument. On Windows, use a small script instead.
 
 ### Adding a provider in code
 
