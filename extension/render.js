@@ -15,6 +15,16 @@
     unverifiable: { label: "Can't verify", tone: 'none' },
     opinion: { label: 'Opinion', tone: 'none' },
   };
+  // How the claim tally groups verdicts.
+  const TALLY = [
+    { tone: 'good', label: 'hold up', keys: ['true', 'mostly_true'] },
+    { tone: 'mixed', label: 'mixed', keys: ['mixed'] },
+    { tone: 'bad', label: "don't hold up", keys: ['misleading', 'mostly_false', 'false'] },
+    { tone: 'none', label: 'unverified or opinion', keys: ['unverifiable', 'opinion'] },
+  ];
+  const ICONS = {
+    search: ['M10.5 17a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13Z', 'm15.5 15.5 5 5'],
+  };
   const SVG = 'http://www.w3.org/2000/svg';
 
   function h(tag, props, ...kids) {
@@ -22,6 +32,7 @@
     for (const [k, v] of Object.entries(props || {})) {
       if (v == null || v === false) continue;
       if (k === 'class') el.className = v;
+      else if (k === 'style') el.style.cssText = v;
       else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
       else el.setAttribute(k, v === true ? '' : v);
     }
@@ -30,6 +41,19 @@
       el.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
     }
     return el;
+  }
+
+  function icon(name) {
+    const svg = document.createElementNS(SVG, 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('class', 'tn-icon');
+    svg.setAttribute('aria-hidden', 'true');
+    for (const d of ICONS[name] || []) {
+      const p = document.createElementNS(SVG, 'path');
+      p.setAttribute('d', d);
+      svg.append(p);
+    }
+    return svg;
   }
 
   function safeUrl(u) {
@@ -53,58 +77,45 @@
     return VERDICTS[key] || VERDICTS.unverifiable;
   }
 
-  function chip(key) {
-    const m = meta(key);
-    return h('span', { class: `tn-chip tn-tone-${m.tone}` }, m.label);
+  function tally(claims) {
+    const groups = TALLY.map((g) => ({ ...g, n: claims.filter((c) => g.keys.includes(c.verdict)).length })).filter((g) => g.n);
+    if (claims.length < 2 || !groups.length) return null;
+    return h('div', { class: 'tn-tally' }, ...groups.map((g) => h('span', { class: `tn-tone-${g.tone}` }, h('i', { class: 'tn-dot' }), h('span', {}, h('strong', {}, g.n), ` ${g.label}`))));
   }
 
-  function ring(score, key) {
-    const m = meta(key);
-    const r = 42;
-    const c = 2 * Math.PI * r;
-    const svg = document.createElementNS(SVG, 'svg');
-    svg.setAttribute('viewBox', '0 0 100 100');
-    svg.setAttribute('aria-hidden', 'true');
-    const circle = (cls, dash) => {
-      const el = document.createElementNS(SVG, 'circle');
-      el.setAttribute('cx', '50');
-      el.setAttribute('cy', '50');
-      el.setAttribute('r', String(r));
-      el.setAttribute('class', cls);
-      if (dash != null) {
-        el.setAttribute('stroke-dasharray', `${dash} ${c}`);
-        el.setAttribute('transform', 'rotate(-90 50 50)');
-      }
-      svg.append(el);
-    };
-    circle('tn-ring-track');
-    if (score != null) circle('tn-ring-value', (c * Math.max(score, 2)) / 100);
-    return h(
-      'div',
-      { class: `tn-ring tn-tone-${m.tone}`, role: 'img', 'aria-label': score == null ? 'No score' : `Truth score ${score} out of 100` },
-      svg,
-      h('div', { class: 'tn-ring-label' }, h('strong', {}, score == null ? '?' : score), h('span', {}, score == null ? 'no score' : 'out of 100'))
-    );
+  function section(title, count, ...kids) {
+    return h('section', { class: 'tn-section' }, h('h3', {}, title, count != null && h('span', {}, count)), ...kids);
   }
 
-  function section(title, ...kids) {
-    return h('section', { class: 'tn-section' }, h('h3', {}, title), ...kids);
+  // "fear_appeal" -> "Fear appeal"
+  function humanize(s) {
+    const t = String(s || '').replace(/[_-]+/g, ' ').trim();
+    return t.charAt(0).toUpperCase() + t.slice(1);
   }
 
-  function claimCard(c) {
-    const sources = (c.sources || [])
+  function claimRow(c) {
+    const m = meta(c.verdict);
+    const links = (c.sources || [])
       .map((s) => ({ ...s, href: safeUrl(s.url) }))
       .filter((s) => s.href)
-      .map((s) =>
-        h('a', { class: 'tn-source', href: s.href, target: '_blank', rel: 'noopener noreferrer nofollow', title: s.title }, host(s.href) || s.title)
-      );
+      .flatMap((s, i) => [i > 0 && ', ', h('a', { href: s.href, target: '_blank', rel: 'noopener noreferrer nofollow', title: s.title }, host(s.href) || s.title)]);
     return h(
       'article',
-      { class: `tn-claim tn-tone-${meta(c.verdict).tone}` },
-      h('div', { class: 'tn-claim-head' }, chip(c.verdict), c.timestamp && h('span', { class: 'tn-muted' }, c.timestamp), c.confidence === 'low' && h('span', { class: 'tn-muted' }, 'low confidence')),
-      h('p', { class: 'tn-claim-text' }, `“${c.claim}”`),
-      c.explanation && h('p', { class: 'tn-claim-why' }, c.explanation),
-      sources.length > 0 && h('div', { class: 'tn-sources' }, h('span', { class: 'tn-muted' }, 'Sources:'), ...sources)
+      { class: `tn-claim tn-tone-${m.tone}` },
+      h(
+        'div',
+        { class: 'tn-claim-side' },
+        h('span', { class: 'tn-status' }, h('i', { class: 'tn-dot' }), m.label),
+        c.timestamp && h('span', { class: 'tn-time' }, `at ${c.timestamp}`),
+        c.confidence === 'low' && h('span', { class: 'tn-time' }, 'low confidence')
+      ),
+      h(
+        'div',
+        {},
+        h('p', { class: 'tn-claim-text' }, c.claim),
+        c.explanation && h('p', { class: 'tn-claim-why' }, c.explanation),
+        links.length > 0 && h('p', { class: 'tn-sources' }, links.length > 1 ? 'Sources: ' : 'Source: ', ...links)
+      )
     );
   }
 
@@ -121,7 +132,8 @@
     const v = result.verdict;
     const src = result.source || {};
     const m = meta(v.verdict);
-    const root = h('div', { class: 'tn' });
+    const claims = v.claims || [];
+    const root = h('div', { class: 'tn tn-result' });
 
     if (opts.showSource !== false && (src.title || src.url)) {
       const thumb = safeUrl(src.thumbnail);
@@ -133,7 +145,7 @@
           thumb && h('img', { src: thumb, alt: '', loading: 'lazy', referrerpolicy: 'no-referrer' }),
           h(
             'div',
-            {},
+            { class: 'tn-sourcecard-text' },
             h('div', { class: 'tn-sourcecard-title' }, src.title || link),
             h('div', { class: 'tn-muted' }, [src.author, src.site].filter(Boolean).join(' · ')),
             link && h('a', { href: link, target: '_blank', rel: 'noopener noreferrer' }, 'Open original')
@@ -142,18 +154,26 @@
       );
     }
 
+    const score = v.score == null ? null : Math.max(0, Math.min(100, Math.round(v.score)));
     root.append(
       h(
         'div',
-        { class: `tn-hero tn-tone-${m.tone}` },
-        ring(v.score, v.verdict),
+        { class: `tn-verdictbox tn-tone-${m.tone}` },
         h(
           'div',
-          { class: 'tn-hero-text' },
-          h('div', { class: 'tn-verdict' }, m.label),
-          v.headline && h('p', { class: 'tn-headline' }, v.headline),
-          v.summary && h('p', { class: 'tn-summary' }, v.summary)
-        )
+          { class: 'tn-verdict-row' },
+          h('div', {}, h('div', { class: 'tn-label' }, 'Verdict'), h('div', { class: 'tn-verdict' }, m.label)),
+          h(
+            'div',
+            { class: 'tn-score' },
+            h('div', { class: 'tn-label' }, 'Truth score'),
+            score == null ? h('span', {}, 'Not scored') : [h('strong', {}, score), h('span', {}, ' / 100')]
+          )
+        ),
+        h('div', { class: 'tn-meter', 'aria-hidden': 'true' }, score != null && h('span', { style: `width:${score}%` })),
+        v.headline && h('p', { class: 'tn-headline' }, v.headline),
+        v.summary && h('p', { class: 'tn-summary' }, v.summary),
+        tally(claims)
       )
     );
 
@@ -162,27 +182,24 @@
       warnings.push('This model had no live web search, so the verdict rests on what the model already knew. Treat it as a first impression.');
     }
     if (v.confidence === 'low') warnings.push('The model reported low confidence in this verdict.');
-    if (warnings.length) {
-      root.append(h('div', { class: 'tn-notes' }, ...warnings.map((n) => h('p', {}, n))));
-    }
+    if (warnings.length) root.append(h('div', { class: 'tn-notes' }, ...warnings.map((n) => h('p', {}, n))));
+
+    if (claims.length) root.append(section('Claims checked', claims.length, ...claims.map(claimRow)));
 
     if (v.commercial_intent || (v.red_flags || []).length) {
       root.append(
         section(
           'Why it may be framed this way',
-          v.commercial_intent && h('p', { class: 'tn-motive' }, h('strong', {}, 'What is being sold: '), v.commercial_intent),
+          null,
+          v.commercial_intent && h('p', { class: 'tn-motive' }, h('strong', {}, 'What is being sold. '), v.commercial_intent),
           (v.red_flags || []).length > 0 &&
-            h('ul', { class: 'tn-flags' }, ...v.red_flags.map((f) => h('li', {}, h('strong', {}, f.kind), f.detail ? ` — ${f.detail}` : '')))
+            h('ul', { class: 'tn-rows tn-flags' }, ...v.red_flags.map((f) => h('li', {}, h('span', { class: 'tn-flag' }, humanize(f.kind)), h('span', {}, f.detail || ''))))
         )
       );
     }
 
-    if ((v.claims || []).length) {
-      root.append(section(`Claims checked (${v.claims.length})`, ...v.claims.map(claimCard)));
-    }
-
     if ((v.missing_context || []).length) {
-      root.append(section('What it leaves out', h('ul', { class: 'tn-list' }, ...v.missing_context.map((t) => h('li', {}, t)))));
+      root.append(section('What it leaves out', null, h('ul', { class: 'tn-rows' }, ...v.missing_context.map((t) => h('li', {}, t)))));
     }
 
     const p = result.provider || {};
@@ -204,13 +221,30 @@
     return root;
   }
 
-  function renderProgress(message, seconds) {
-    return h(
+  /** Progress view that updates in place. Returns { el, update(message, seconds, status) }. */
+  function createProgress() {
+    const STEPS = ['Read the content', 'Check each claim', 'Write the verdict'];
+    const steps = STEPS.map((label, i) => h('li', {}, `${i + 1}. ${label}`));
+    const msg = h('p', { class: 'tn-progress-msg' }, 'Starting…');
+    const time = h('p', { class: 'tn-muted' });
+    const el = h(
       'div',
       { class: 'tn tn-progress', role: 'status' },
-      h('div', { class: 'tn-spinner' }),
-      h('div', {}, h('p', { class: 'tn-progress-msg' }, message || 'Working…'), h('p', { class: 'tn-muted' }, `${seconds}s · a careful check usually takes 1–2 minutes`))
+      msg,
+      h('div', { class: 'tn-bar', 'aria-hidden': 'true' }, h('span', {})),
+      h('ol', { class: 'tn-steps' }, ...steps),
+      time
     );
+    function update(message, seconds, status) {
+      const active = status === 'analyzing' ? 1 : 0;
+      steps.forEach((s, i) => {
+        s.className = i < active ? 'tn-step-done' : i === active ? 'tn-step-active' : '';
+      });
+      msg.textContent = message || 'Working…';
+      time.textContent = `${seconds}s elapsed · a careful check usually takes 1–2 minutes`;
+    }
+    update('Starting…', 0);
+    return { el, update };
   }
 
   function renderError(message, onRetry) {
@@ -223,5 +257,5 @@
     );
   }
 
-  global.TruthnessRender = { render, renderProgress, renderError, VERDICTS, h };
+  global.TruthnessRender = { render, createProgress, renderError, VERDICTS, h, icon };
 })(typeof window !== 'undefined' ? window : globalThis);

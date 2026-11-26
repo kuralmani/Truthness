@@ -1,6 +1,6 @@
 (function () {
   'use strict';
-  const { render, renderProgress, renderError } = window.TruthnessRender;
+  const { render, createProgress, renderError } = window.TruthnessRender;
   const $ = (id) => document.getElementById(id);
   const form = $('form');
   const output = $('output');
@@ -67,7 +67,9 @@
     const secs = () => Math.round((Date.now() - started) / 1000);
     const retry = () => check(payload);
     setBusy(true);
-    output.replaceChildren(renderProgress('Starting…', 0));
+    const progress = createProgress();
+    output.replaceChildren(progress.el);
+    output.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     try {
       const { id } = await api('/api/check', {
         method: 'POST',
@@ -84,7 +86,7 @@
           break;
         }
         if (job.status === 'error') throw new Error(job.error || 'Unknown error');
-        output.replaceChildren(renderProgress(job.message, secs()));
+        progress.update(job.message, secs(), job.status);
       }
     } catch (e) {
       if (mine === run) output.replaceChildren(renderError(e.message, retry));

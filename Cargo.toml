@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2021"
 description = "Open-source AI fact-checker for videos and web pages, with pluggable models"
 license = "MIT"
+repository = "https://github.com/kuralmani/Truthness"
+readme = "README.md"
+keywords = ["fact-checking", "ai", "misinformation", "youtube", "browser-extension"]
 
 [dependencies]
 anyhow = "1"

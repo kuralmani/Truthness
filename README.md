@@ -1,40 +1,78 @@
 # Truthness
 
-Check a video or a web page before you believe it.
+Fact-check a video or a web page before you believe it.
 
-Truthness reads a YouTube video (via its captions) or a web page, pulls out the factual claims, checks them against real sources with the AI model **you** choose, and gives you:
+A lot of online content is made to get attention and sell something, and it mixes real facts with false impressions. Truthness reads a YouTube video (via its captions) or a web page, pulls out the factual claims, checks them against published sources with the AI model **you** choose, and gives you:
 
 - an overall verdict (True · Mostly true · Mixed · Misleading · Mostly false · False · Can't verify) and a 0–100 score,
 - a claim-by-claim breakdown with links to the sources used,
 - what the content is selling and which persuasion tricks it uses,
 - the context it leaves out.
 
-It comes as three parts:
+It runs on your own machine. There is no account and no hosted service: your model, your keys, your data.
+
+![A Truthness verdict: overall rating, score, summary and the claims that were checked](docs/screenshot.png)
+
+## Quick start
+
+You need [Rust](https://rustup.rs) and one AI model. The easiest model is the [Claude Code CLI](https://claude.com/claude-code): if `claude` is installed and logged in, there is nothing to configure.
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/kuralmani/Truthness/main/install.sh | sh
+truthness
+```
+
+Then open <http://localhost:8787>, paste a link and press **Check**. A check with web search usually takes one to two minutes; results are cached for a week.
+
+Prefer to do it by hand?
+
+```sh
+git clone https://github.com/kuralmani/Truthness.git
+cd Truthness
+cargo run --release
+```
+
+### Install the browser extension (Chrome or Edge)
+
+1. Get the `extension` folder: it is in your clone (the installer puts it at `~/.truthness/src/extension`), or download `truthness-extension.zip` from the [latest release](https://github.com/kuralmani/Truthness/releases/latest) and unzip it.
+2. Open `chrome://extensions` (or `edge://extensions`) and turn on **Developer mode**.
+3. Click **Load unpacked** and choose that folder.
+
+Keep the server running, then:
+
+- on YouTube, open a video or Short and click **Check the facts** (bottom right);
+- on any other page, click the Truthness toolbar icon;
+- or select some text, right-click and choose **Fact-check … with Truthness**.
+
+The extension talks to `http://localhost:8787` by default. Change the server and the model under the extension's **Options**.
+
+### Example setups
+
+| You have | Do this |
+|---|---|
+| Claude Code CLI | Nothing. Run `truthness`. |
+| An Anthropic API key | `ANTHROPIC_API_KEY=… truthness` |
+| A Gemini API key | `GEMINI_API_KEY=… truthness` |
+| Ollama or another local model | Copy `truthness.example.toml` to `truthness.toml`, uncomment the `[providers.ollama]` block, run `truthness` |
+| Another CLI (Gemini CLI, …) | Same file, the `type = "command"` block |
+
+`truthness.toml` is read from the folder you start the server in; pass another path as the first argument (`truthness /path/to/truthness.toml`) or set `TRUTHNESS_CONFIG`.
+
+Try the API directly:
+
+```sh
+curl -s localhost:8787/api/check -H 'Content-Type: application/json' \
+  -d '{"url": "https://en.wikipedia.org/wiki/Trihalomethane"}'
+# {"id":"…"}   then poll:  curl -s localhost:8787/api/check/<id>
+```
+
+## What is in the repository
 
 | Part | Where | What it is |
 |---|---|---|
 | Server | `src/` | Rust (axum). Extracts content, runs the model, caches results, serves the website. |
 | Website | `web/` | Paste a link or text, get a verdict. No build step. |
 | Browser extension | `extension/` | Chrome / Edge (Manifest V3). A "Check the facts" button on YouTube, and a toolbar button + right-click menu on every other page. |
-
-## Run it locally
-
-You need [Rust](https://rustup.rs) and at least one model. The easiest is the [Claude Code CLI](https://claude.com/claude-code): if `claude` is on your PATH and you are logged in, there is nothing to configure.
-
-```sh
-cargo run --release
-# → Truthness is running at http://127.0.0.1:8787
-```
-
-Open <http://localhost:8787>, paste a link, press **Check**. A check with web search usually takes one to two minutes; results are cached for a week.
-
-### Install the extension
-
-1. Open `edge://extensions` (or `chrome://extensions`) and turn on **Developer mode**.
-2. Click **Load unpacked** and choose the `extension/` folder.
-3. Open any YouTube video or Short and click **Check the facts** (bottom right). On other sites, click the Truthness toolbar icon, or select some text and right-click → **Fact-check … with Truthness**.
-
-The extension talks to `http://localhost:8787` by default; change the server and the model under the extension's **Options**.
 
 ## Choosing models
 
@@ -93,12 +131,17 @@ Truthness is a tool for thinking, not an oracle.
 ## Development
 
 ```sh
-cargo test                     # unit tests
-./scripts/sync-extension.sh    # after editing web/render.js or web/verdict.css
+cargo test                       # unit tests
+./scripts/sync-extension.sh      # after editing web/render.js or web/verdict.css
+./scripts/package-extension.sh   # builds truthness-extension.zip
 ```
 
 In debug builds the website is read from `web/` on every request; release builds embed it in the binary.
 
+## Contributing
+
+Issues and pull requests are welcome, especially new providers, transcript support for more video sites, and fixes when YouTube changes. Please run `cargo test` before opening a pull request. Pushing a tag such as `v0.1.0` builds release binaries and the extension zip.
+
 ## License
 
-MIT
+[MIT](LICENSE)

@@ -6,7 +6,7 @@
   if (window.__truthnessLoaded) return;
   window.__truthnessLoaded = true;
 
-  const { render, renderProgress, renderError, h } = window.TruthnessRender;
+  const { render, createProgress, renderError, h, icon } = window.TruthnessRender;
   const MAX_PAGE_CHARS = 60000;
   const isYouTube = /(^|\.)youtube\.com$/.test(location.hostname);
   const isVideoPage = () => isYouTube && /^\/(watch|shorts\/|live\/)/.test(location.pathname);
@@ -37,24 +37,6 @@
     return sheet;
   }
 
-  function logo() {
-    const NS = 'http://www.w3.org/2000/svg';
-    const svg = document.createElementNS(NS, 'svg');
-    svg.setAttribute('viewBox', '0 0 24 24');
-    svg.setAttribute('fill', 'none');
-    svg.setAttribute('stroke', 'currentColor');
-    svg.setAttribute('stroke-width', '2.4');
-    svg.setAttribute('stroke-linecap', 'round');
-    svg.setAttribute('stroke-linejoin', 'round');
-    svg.setAttribute('aria-hidden', 'true');
-    for (const d of ['M10.5 17a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13Z', 'm15.5 15.5 5 5', 'm7.8 10.7 1.9 1.9 3.4-3.8']) {
-      const p = document.createElementNS(NS, 'path');
-      p.setAttribute('d', d);
-      svg.append(p);
-    }
-    return svg;
-  }
-
   async function build() {
     if (ui) return ui;
     const hostEl = document.createElement('div');
@@ -62,7 +44,7 @@
     const shadow = hostEl.attachShadow({ mode: 'open' });
     shadow.adoptedStyleSheets = await Promise.all([loadSheet('verdict.css'), loadSheet('panel.css')]);
 
-    const fab = h('button', { class: 'tn-fab', type: 'button', hidden: true, onclick: () => open({ mode: 'page' }) }, logo(), 'Check the facts');
+    const fab = h('button', { class: 'tn-fab', type: 'button', hidden: true, onclick: () => open({ mode: 'page' }) }, h('span', { class: 'tn-fab-icon' }, icon('search')), 'Check the facts');
     const body = h('div', { class: 'tn-panel-body' });
     const fullLink = h('a', { target: '_blank', rel: 'noopener noreferrer', hidden: true }, 'Full page');
     const panel = h(
@@ -71,7 +53,7 @@
       h(
         'div',
         { class: 'tn-panel-head' },
-        h('span', { class: 'tn-panel-title' }, 'Truthness'),
+        h('span', { class: 'tn-panel-title' }, h('span', { class: 'tn-fab-icon' }, icon('search')), 'Truthness'),
         h('div', { class: 'tn-panel-actions' }, fullLink, h('button', { class: 'tn-close', type: 'button', 'aria-label': 'Close', onclick: close }, '×'))
       ),
       body
@@ -127,7 +109,8 @@
     const show = (node) => mine === run && ui.body.replaceChildren(node);
     checkedUrl = location.href;
     ui.fullLink.hidden = true;
-    show(renderProgress('Starting…', 0));
+    const progress = createProgress();
+    show(progress.el);
     try {
       const { id, server } = await send({ type: 'start', payload });
       if (payload.url && !payload.text) {
@@ -143,7 +126,7 @@
           return;
         }
         if (job.status === 'error') throw new Error(job.error || 'Unknown error');
-        show(renderProgress(job.message, secs()));
+        if (mine === run) progress.update(job.message, secs(), job.status);
       }
     } catch (e) {
       show(renderError(e.message, () => check(payload)));

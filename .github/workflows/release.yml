@@ -1,0 +1,48 @@
+# Push a tag like v0.1.0 to publish prebuilt binaries and the extension zip.
+name: Release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+jobs:
+  create:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./scripts/package-extension.sh
+      - run: gh release create "$GITHUB_REF_NAME" truthness-extension.zip --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+  build:
+    needs: create
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, target: x86_64-unknown-linux-gnu, ext: '' }
+          - { os: macos-latest, target: aarch64-apple-darwin, ext: '' }
+          - { os: macos-latest, target: x86_64-apple-darwin, ext: '' }
+          - { os: windows-latest, target: x86_64-pc-windows-msvc, ext: '.exe' }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - run: cargo build --release --locked --target ${{ matrix.target }}
+      - name: Package and upload
+        shell: bash
+        run: |
+          name="truthness-${GITHUB_REF_NAME}-${{ matrix.target }}"
+          mkdir "$name"
+          cp "target/${{ matrix.target }}/release/truthness${{ matrix.ext }}" README.md LICENSE truthness.example.toml "$name/"
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            7z a "$name.zip" "$name" > /dev/null
+            gh release upload "$GITHUB_REF_NAME" "$name.zip"
+          else
+            tar czf "$name.tar.gz" "$name"
+            gh release upload "$GITHUB_REF_NAME" "$name.tar.gz"
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
