@@ -1,57 +1,102 @@
 #!/bin/sh
-# Truthness installer: builds the server and puts `truthness` on your PATH.
+# Truthness installer for macOS and Linux.
 #
 #   curl -fsSL https://raw.githubusercontent.com/kuralmani/Truthness/main/install.sh | sh
 #
-# or, from a clone of the repository:  ./install.sh
+# Downloads the latest prebuilt server and the browser extension into
+# ~/.truthness, puts `truthness` on your PATH, and starts it.
+#
+#   TRUTHNESS_HOME=dir       install somewhere other than ~/.truthness
+#   TRUTHNESS_NO_START=1     install only, do not start the server
+#   TRUTHNESS_FROM_SOURCE=1  build with cargo instead of downloading a binary
 set -eu
 
-REPO="https://github.com/kuralmani/Truthness.git"
-HOME_DIR="${TRUTHNESS_HOME:-$HOME/.truthness}"
+REPO="kuralmani/Truthness"
+DIR="${TRUTHNESS_HOME:-$HOME/.truthness}"
+say() { printf '%s\n' "$*"; }
+die() { printf 'error: %s\n' "$*" >&2; exit 1; }
+have() { command -v "$1" >/dev/null 2>&1; }
 
-if [ -f Cargo.toml ] && grep -q '^name = "truthness"' Cargo.toml; then
-  SRC="$(pwd)"
-else
-  command -v git >/dev/null 2>&1 || { echo "git is required: https://git-scm.com/downloads" >&2; exit 1; }
-  SRC="$HOME_DIR/src"
-  if [ -d "$SRC/.git" ]; then
-    echo "Updating $SRC"
-    git -C "$SRC" pull --ff-only
-  else
-    echo "Downloading Truthness to $SRC"
-    mkdir -p "$HOME_DIR"
-    git clone --depth 1 "$REPO" "$SRC"
-  fi
-fi
+have curl || die "curl is required"
+mkdir -p "$DIR/bin"
 
-if ! command -v cargo >/dev/null 2>&1; then
-  if [ -x "$HOME/.cargo/bin/cargo" ]; then
-    PATH="$HOME/.cargo/bin:$PATH"
-  else
-    echo "Rust is required to build Truthness. Install it from https://rustup.rs and run this again." >&2
-    exit 1
-  fi
-fi
-
-echo "Building (the first build takes a few minutes)"
-cargo install --path "$SRC" --locked
-
-cat <<DONE
-
-Truthness is installed.
-
-  1. Start it:            truthness
-  2. Open the website:    http://localhost:8787
-  3. Add the extension:   open chrome://extensions (or edge://extensions),
-                          turn on Developer mode, click "Load unpacked" and choose
-                          $SRC/extension
-
-Models: with the Claude Code CLI installed and logged in, nothing else is needed.
-For other models, copy $SRC/truthness.example.toml
-to truthness.toml in the folder you start truthness from, and edit it.
-DONE
-
-case ":$PATH:" in
-  *":$HOME/.cargo/bin:"*) ;;
-  *) echo; echo "Note: add $HOME/.cargo/bin to your PATH to run 'truthness' from anywhere." ;;
+case "$(uname -s)-$(uname -m)" in
+  Darwin-arm64) TARGET=aarch64-apple-darwin ;;
+  Darwin-x86_64) TARGET=x86_64-apple-darwin ;;
+  Linux-x86_64) TARGET=x86_64-unknown-linux-gnu ;;
+  *) TARGET="" ;;
 esac
+
+# The latest release tag, read from where /releases/latest redirects to.
+TAG="$(curl -fsSLI -o /dev/null -w '%{url_effective}' "https://github.com/$REPO/releases/latest" | sed 's|.*/tag/||')"
+case "$TAG" in v*) ;; *) die "could not find the latest release of $REPO" ;; esac
+BASE="https://github.com/$REPO/releases/download/$TAG"
+
+if [ -n "$TARGET" ] && [ -z "${TRUTHNESS_FROM_SOURCE:-}" ]; then
+  say "Downloading Truthness $TAG for $TARGET"
+  TMP="$(mktemp -d)"
+  trap 'rm -rf "$TMP"' EXIT
+  curl -fsSL "$BASE/truthness-$TAG-$TARGET.tar.gz" | tar xz -C "$TMP"
+  cp "$TMP/truthness-$TAG-$TARGET/truthness" "$DIR/bin/truthness"
+  cp "$TMP/truthness-$TAG-$TARGET/truthness.example.toml" "$DIR/truthness.example.toml"
+  chmod +x "$DIR/bin/truthness"
+else
+  [ -n "$TARGET" ] || say "No prebuilt binary for $(uname -s) $(uname -m); building from source."
+  have cargo || die "Rust is required to build from source: https://rustup.rs"
+  have git || die "git is required to build from source"
+  if [ -d "$DIR/src/.git" ]; then git -C "$DIR/src" pull --ff-only; else git clone --depth 1 "https://github.com/$REPO.git" "$DIR/src"; fi
+  cargo install --path "$DIR/src" --locked --root "$DIR"
+  cp "$DIR/src/truthness.example.toml" "$DIR/truthness.example.toml"
+fi
+
+if have unzip; then
+  say "Downloading the browser extension"
+  curl -fsSL -o "$DIR/extension.zip" "$BASE/truthness-extension.zip"
+  rm -rf "$DIR/extension"
+  unzip -qo "$DIR/extension.zip" -d "$DIR/extension"
+  rm -f "$DIR/extension.zip"
+else
+  say "unzip not found: skipping the browser extension (get it from https://github.com/$REPO/releases/latest)"
+fi
+
+# Put `truthness` on the PATH if a usual, writable place exists.
+LINKED=""
+for d in "$HOME/.local/bin" /usr/local/bin "$HOME/bin"; do
+  case ":$PATH:" in
+    *":$d:"*) if [ -d "$d" ] && [ -w "$d" ]; then ln -sf "$DIR/bin/truthness" "$d/truthness"; LINKED="$d"; break; fi ;;
+  esac
+done
+RUN="truthness"
+[ -n "$LINKED" ] || RUN="$DIR/bin/truthness"
+
+say ""
+say "Truthness $TAG is installed in $DIR"
+say ""
+say "AI tools found on this machine (Truthness uses these automatically):"
+FOUND=""
+have claude && { say "  - Claude Code CLI"; FOUND=1; }
+have codex && { say "  - Codex CLI"; FOUND=1; }
+have gemini && { say "  - Gemini CLI"; FOUND=1; }
+[ -n "${ANTHROPIC_API_KEY:-}" ] && { say "  - Anthropic API key"; FOUND=1; }
+[ -n "${GEMINI_API_KEY:-}" ] && { say "  - Gemini API key"; FOUND=1; }
+if [ -z "$FOUND" ]; then
+  say "  none. Install the Claude Code CLI (https://claude.com/claude-code), or copy"
+  say "  $DIR/truthness.example.toml to $DIR/truthness.toml and add a model."
+fi
+say ""
+say "Browser extension (Chrome or Edge), once:"
+say "  1. Open chrome://extensions or edge://extensions"
+say "  2. Turn on Developer mode"
+say "  3. Click \"Load unpacked\" and choose $DIR/extension"
+say ""
+say "Start Truthness any time with:  $RUN"
+say ""
+
+if [ -z "${TRUTHNESS_NO_START:-}" ]; then
+  say "Starting Truthness at http://localhost:8787 (Ctrl+C to stop)"
+  (
+    sleep 2
+    if have open; then open "http://localhost:8787"; elif have xdg-open; then xdg-open "http://localhost:8787"; fi
+  ) >/dev/null 2>&1 &
+  exec "$DIR/bin/truthness"
+fi

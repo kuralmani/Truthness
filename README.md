@@ -56,49 +56,43 @@ Truthness is not an oracle. AI models make mistakes, and a verdict is a starting
 
 ## Quick start
 
-You need one AI model. The easiest is the [Claude Code CLI](https://claude.com/claude-code): if `claude` is installed and logged in, there is nothing to configure. See [Example setups](#example-setups) for API keys and local models.
-
-### 1. Download Truthness
-
-Prebuilt binaries are on the [releases page](https://github.com/kuralmani/Truthness/releases/latest). Nothing else needs to be installed.
-
-**macOS and Linux** — pick the line for your machine:
-
-```sh
-V=v0.1.0
-T=aarch64-apple-darwin        # Mac with Apple Silicon
-# T=x86_64-apple-darwin       # Mac with Intel
-# T=x86_64-unknown-linux-gnu  # Linux
-
-curl -fsSL "https://github.com/kuralmani/Truthness/releases/download/$V/truthness-$V-$T.tar.gz" | tar xz
-cd "truthness-$V-$T"
-./truthness
-```
-
-**Windows** — download `truthness-v0.1.0-x86_64-pc-windows-msvc.zip` from the releases page, unzip it, and run `truthness.exe` from that folder.
-
-The binaries are not code-signed. If you download the macOS archive with a browser instead of `curl`, macOS will block it until you run `xattr -d com.apple.quarantine truthness`; Windows may show a SmartScreen prompt (**More info** → **Run anyway**).
-
-### 2. Open it
-
-Go to <http://localhost:8787>, paste a link and press **Check**. A check with web search usually takes one to two minutes; results are cached for a week.
-
-### Build from source instead
-
-With [Rust](https://rustup.rs) installed:
+### macOS and Linux: one command
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/kuralmani/Truthness/main/install.sh | sh
-truthness
 ```
 
-or clone the repository and run `cargo run --release`.
+That is the whole setup. The installer:
+
+1. downloads the latest prebuilt server and the browser extension into `~/.truthness` (no Rust or other tools needed);
+2. tells you which AI tools it found on your machine;
+3. starts Truthness and opens <http://localhost:8787>.
+
+Paste a link and press **Check**. A check with web search usually takes one to two minutes; results are cached for a week. Next time, start it with `truthness` (or `~/.truthness/bin/truthness`).
+
+**It uses what you already have.** With no configuration, Truthness looks for and enables:
+
+| Found on your machine | Used as | Searches the web? |
+|---|---|---|
+| `claude` (Claude Code CLI, logged in) | Claude | yes |
+| `ANTHROPIC_API_KEY` | Anthropic API | yes |
+| `GEMINI_API_KEY` | Gemini API | yes |
+| `codex` (OpenAI Codex CLI) | Codex, read-only sandbox | no |
+| `gemini` (Gemini CLI) | Gemini CLI | no |
+
+Everything found appears in the model picker; the first one in this list that exists is the default. Claude has been tested end to end; the Codex and Gemini CLI integrations follow those tools' documentation and have not been verified against the real tools. If none is found, install the [Claude Code CLI](https://claude.com/claude-code) or see [Example setups](#example-setups).
+
+### Windows
+
+Download `truthness-…-x86_64-pc-windows-msvc.zip` and `truthness-extension.zip` from the [latest release](https://github.com/kuralmani/Truthness/releases/latest), unzip both, and run `truthness.exe`. Windows may show a SmartScreen prompt because the binary is not code-signed (**More info** → **Run anyway**).
 
 ### Install the browser extension (Chrome or Edge)
 
-1. Download [truthness-extension.zip](https://github.com/kuralmani/Truthness/releases/latest/download/truthness-extension.zip) and unzip it somewhere you will keep it. (If you cloned the repository, use its `extension` folder instead.)
-2. Open `chrome://extensions` (or `edge://extensions`) and turn on **Developer mode**.
-3. Click **Load unpacked** and choose that folder.
+Chrome and Edge only allow silent, one-click installs from their extension stores, and Truthness is not listed there yet. Until it is, loading it takes three clicks, once:
+
+1. Open `chrome://extensions` (or `edge://extensions`) and turn on **Developer mode**.
+2. Click **Load unpacked**.
+3. Choose `~/.truthness/extension` (the installer put it there; press <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>G</kbd> in the macOS file dialog to type the path). On Windows, choose the folder you unzipped.
 
 Keep the server running, then:
 
@@ -107,6 +101,12 @@ Keep the server running, then:
 - or select some text, right-click and choose **Fact-check … with Truthness**.
 
 The extension talks to `http://localhost:8787` by default. Change the server and the model under the extension's **Options**.
+
+### Other ways to install
+
+- **Download by hand:** binaries for macOS, Linux and Windows are on the [releases page](https://github.com/kuralmani/Truthness/releases/latest). Unpack and run `./truthness`. If you download the macOS archive with a browser, clear the quarantine flag first: `xattr -d com.apple.quarantine truthness`.
+- **Build from source:** with [Rust](https://rustup.rs) installed, `git clone https://github.com/kuralmani/Truthness.git && cd Truthness && cargo run --release`.
+- **Installer options:** `TRUTHNESS_NO_START=1` installs without starting, `TRUTHNESS_HOME=dir` changes the install folder, `TRUTHNESS_FROM_SOURCE=1` builds with cargo.
 
 ### Example setups
 
@@ -118,7 +118,7 @@ The extension talks to `http://localhost:8787` by default. Change the server and
 | Ollama or another local model | Copy `truthness.example.toml` to `truthness.toml`, uncomment the `[providers.ollama]` block, run `truthness` |
 | Codex, Cursor, Gemini CLI or another CLI | Same file, a `type = "command"` block: see [Other CLIs](#other-clis-codex-cursor-) |
 
-`truthness.toml` is read from the folder you start the server in; pass another path as the first argument (`truthness /path/to/truthness.toml`) or set `TRUTHNESS_CONFIG`.
+`truthness.toml` is read from the folder you start the server in, or from `~/.truthness/truthness.toml`. You can also pass a path as the first argument (`truthness /path/to/truthness.toml`) or set `TRUTHNESS_CONFIG`. Once a config file defines providers, auto-detection is off and only those are used.
 
 Try the API directly:
 

@@ -300,7 +300,7 @@ async fn main() -> Result<()> {
     };
 
     if providers.is_empty() {
-        tracing::warn!("no AI provider found. Install the `claude` CLI, set ANTHROPIC_API_KEY / GEMINI_API_KEY, or create truthness.toml");
+        tracing::warn!("no AI provider found. Install the claude, codex or gemini CLI, set ANTHROPIC_API_KEY / GEMINI_API_KEY, or create truthness.toml");
     }
     for p in providers.values() {
         let i = p.info();

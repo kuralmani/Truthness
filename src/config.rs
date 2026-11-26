@@ -26,7 +26,7 @@ impl Default for ServerConfig {
         Self {
             bind: "127.0.0.1:8787".into(),
             max_concurrent: 2,
-            cache_dir: ".truthness/cache".into(),
+            cache_dir: home_dir().map(|h| format!("{h}/cache")).unwrap_or_else(|| ".truthness/cache".into()),
             cache_ttl_hours: 168,
             allow_private_hosts: false,
             default_provider: None,
@@ -124,16 +124,32 @@ fn on_path(cmd: &str) -> bool {
         .unwrap_or(false)
 }
 
+/// `~/.truthness`: where the installer puts things and where the cache lives by default.
+fn home_dir() -> Option<String> {
+    if let Ok(dir) = std::env::var("TRUTHNESS_HOME") {
+        return Some(dir);
+    }
+    let home = std::env::var("HOME").or_else(|_| std::env::var("USERPROFILE")).ok()?;
+    Some(Path::new(&home).join(".truthness").to_string_lossy().into_owned())
+}
+
 fn env_set(name: &str) -> bool {
     std::env::var(name).map(|v| !v.trim().is_empty()).unwrap_or(false)
 }
 
 impl Config {
     pub fn load(path: Option<&str>) -> Result<Self> {
+        // Explicit path, then TRUTHNESS_CONFIG, then ./truthness.toml, then ~/.truthness/truthness.toml.
         let path = path
             .map(str::to_string)
             .or_else(|| std::env::var("TRUTHNESS_CONFIG").ok())
-            .unwrap_or_else(|| "truthness.toml".into());
+            .unwrap_or_else(|| {
+                let local = "truthness.toml".to_string();
+                match home_dir().map(|h| format!("{h}/truthness.toml")) {
+                    Some(global) if !Path::new(&local).exists() && Path::new(&global).exists() => global,
+                    _ => local,
+                }
+            });
         let mut cfg = if Path::new(&path).exists() {
             let raw = std::fs::read_to_string(&path).with_context(|| format!("reading {path}"))?;
             tracing::info!("loaded config from {path}");
@@ -183,6 +199,38 @@ impl Config {
                     label: None,
                 },
             );
+        }
+        // Other AI command-line tools, driven through the generic command provider.
+        if on_path("codex") {
+            self.providers.insert(
+                "codex".into(),
+                ProviderConfig::Command {
+                    command: "codex".into(),
+                    args: ["exec", "--sandbox", "read-only", "--skip-git-repo-check", "-"].map(String::from).to_vec(),
+                    timeout_secs: d_timeout(),
+                    grounded: false,
+                    label: Some("Codex (local CLI)".into()),
+                },
+            );
+        }
+        if on_path("gemini") {
+            self.providers.insert(
+                "gemini-cli".into(),
+                ProviderConfig::Command {
+                    command: "gemini".into(),
+                    args: ["-p", "Follow the instructions given on stdin."].map(String::from).to_vec(),
+                    timeout_secs: d_timeout(),
+                    grounded: false,
+                    label: Some("Gemini (local CLI)".into()),
+                },
+            );
+        }
+        // Prefer the options that search the web and are known to work best.
+        if self.server.default_provider.is_none() {
+            self.server.default_provider = ["claude-cli", "anthropic", "gemini", "codex", "gemini-cli"]
+                .into_iter()
+                .find(|id| self.providers.contains_key(*id))
+                .map(String::from);
         }
     }
 }

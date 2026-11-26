@@ -1,12 +1,14 @@
-# Copy to truthness.toml and edit. Without a config file, Truthness enables
-# whatever it finds: the `claude` CLI on PATH, ANTHROPIC_API_KEY, GEMINI_API_KEY.
+# Copy to truthness.toml (next to where you start the server, or to
+# ~/.truthness/truthness.toml) and edit. Without a config file, Truthness
+# enables whatever it finds: the claude, codex and gemini CLIs on PATH,
+# ANTHROPIC_API_KEY, GEMINI_API_KEY.
 
 [server]
 bind = "127.0.0.1:8787"        # use 0.0.0.0:8787 only behind a reverse proxy with rate limiting
 default_provider = "claude-cli"
 max_concurrent = 2             # analyses running at once
 cache_ttl_hours = 168          # 0 disables the result cache
-cache_dir = ".truthness/cache"
+# cache_dir = "/somewhere/else"   # default: ~/.truthness/cache
 max_content_chars = 40000      # how much transcript/page text is sent to the model
 allow_private_hosts = false    # keep false on any server other people can reach
 
