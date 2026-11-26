@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Truthness — check a video or page before you believe it</title>
+  <meta name="description" content="Paste a YouTube video or web page. Truthness checks its claims against real sources and tells you what holds up.">
+  <meta name="color-scheme" content="light dark">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="verdict.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="/"><img src="icon.svg" alt="" width="26" height="26">Truthness</a>
+    <span class="top-note">Open source · bring your own model</span>
+  </header>
+
+  <main>
+    <section class="intro">
+      <h1>Check it before you believe it</h1>
+      <p>Paste a YouTube video, a Short, or any web page. Truthness pulls out the claims, checks them against real sources, and tells you what holds up, what doesn't, and what is being sold.</p>
+    </section>
+
+    <form id="form" class="checker" novalidate>
+      <div class="tabs" role="tablist">
+        <button type="button" role="tab" id="tab-url" aria-selected="true" aria-controls="pane-url">Link</button>
+        <button type="button" role="tab" id="tab-text" aria-selected="false" aria-controls="pane-text">Text</button>
+      </div>
+
+      <div id="pane-url" role="tabpanel" aria-labelledby="tab-url">
+        <label class="sr-only" for="url">Link to check</label>
+        <div class="row">
+          <input id="url" name="url" type="url" inputmode="url" autocomplete="off" spellcheck="false"
+                 placeholder="https://www.youtube.com/shorts/…">
+          <button id="submit-url" class="primary" type="submit">Check</button>
+        </div>
+      </div>
+
+      <div id="pane-text" role="tabpanel" aria-labelledby="tab-text" hidden>
+        <label class="sr-only" for="text">Text to check</label>
+        <textarea id="text" name="text" rows="6" placeholder="Paste a post, a caption, a message someone forwarded you…"></textarea>
+        <div class="row end">
+          <button class="primary" type="submit">Check</button>
+        </div>
+      </div>
+
+      <div class="options">
+        <label for="provider">Checked by</label>
+        <select id="provider" name="provider"></select>
+        <span id="provider-note" class="hint"></span>
+      </div>
+      <p id="form-error" class="form-error" role="alert" hidden></p>
+    </form>
+
+    <section id="output" aria-live="polite"></section>
+
+    <section class="how" id="how">
+      <h2>How it works</h2>
+      <ol>
+        <li><strong>Reads the content.</strong> For videos it reads the captions; for pages, the article text.</li>
+        <li><strong>Checks each claim.</strong> The model you choose looks for evidence and links the sources it used.</li>
+        <li><strong>Scores the whole thing.</strong> 0 is entirely false, 100 is accurate. "Misleading" means the facts are real but the impression they are used to create is not.</li>
+      </ol>
+      <p class="hint">A verdict here is an AI's assessment, not a ruling. Always open the sources.</p>
+    </section>
+  </main>
+
+  <script src="render.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

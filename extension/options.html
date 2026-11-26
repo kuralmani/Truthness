@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="color-scheme" content="light dark">
+  <title>Truthness options</title>
+  <style>
+    body { font: 14px/1.5 system-ui, -apple-system, 'Segoe UI', sans-serif; margin: 0; padding: 18px; min-width: 380px; }
+    label { display: block; font-weight: 600; margin: 14px 0 4px; }
+    input, select { font: inherit; width: 100%; padding: 7px 9px; box-sizing: border-box; border: 1px solid #8a8f9c; border-radius: 7px; background: Field; color: FieldText; }
+    .hint { color: GrayText; font-size: 12.5px; margin: 4px 0 0; }
+    .row { display: flex; gap: 10px; align-items: center; margin-top: 18px; }
+    button { font: inherit; font-weight: 600; padding: 7px 16px; border-radius: 7px; border: 1px solid #3b5bdb; background: #3b5bdb; color: #fff; cursor: pointer; }
+    button.secondary { background: transparent; color: inherit; border-color: #8a8f9c; }
+    #status { font-size: 13px; }
+    #status.bad { color: #c2410c; }
+  </style>
+</head>
+<body>
+  <label for="server">Truthness server</label>
+  <input id="server" type="url" spellcheck="false" placeholder="http://localhost:8787">
+  <p class="hint">Where your Truthness server runs. Pages you check are sent to this address and nowhere else.</p>
+
+  <label for="provider">Model</label>
+  <select id="provider"><option value="">Server default</option></select>
+  <p class="hint">Models are configured on the server in <code>truthness.toml</code>.</p>
+
+  <div class="row">
+    <button id="save" type="button">Save</button>
+    <button id="test" type="button" class="secondary">Test connection</button>
+    <span id="status" role="status"></span>
+  </div>
+  <script src="options.js"></script>
+</body>
+</html>

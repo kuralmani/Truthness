@@ -1,0 +1,5 @@
+/target
+.truthness/
+truthness.toml
+.env
+.DS_Store
